@@ -19,7 +19,8 @@ const ACCENT: Color = Color {
 fn main() -> iced::Result {
     iced::application(Yahtzee::default, Yahtzee::update, Yahtzee::view)
         .title("Yahtzee")
-        .font(include_bytes!("lexend.woff2").as_slice())
+        // iced can't load WOFF2 — convert it to TTF first (see README note)
+        .font(include_bytes!("lexend.ttf").as_slice())
         .default_font(Font::with_name("Lexend"))
         .subscription(Yahtzee::subscription)
         .theme(Yahtzee::theme)
@@ -290,6 +291,7 @@ enum Message {
     ToggleKept(usize),
     Score(Category),
     AutoScore,
+    AutoNumber,
     NewGame,
     AiTick,
 }
@@ -449,6 +451,14 @@ impl Yahtzee {
                     self.score(cat);
                 }
             }
+            Message::AutoNumber => {
+                if self.human_turn()
+                    && self.has_rolled()
+                    && let Some(cat) = self.best_number_category()
+                {
+                    self.score(cat);
+                }
+            }
             Message::NewGame => *self = Self::default(),
             Message::AiTick => {
                 if self.current == 1 && !self.game_over() {
@@ -471,6 +481,21 @@ impl Yahtzee {
                 let key = |c: &Category| (points(*c, &dice, joker) as f32, -c.baseline());
                 let (ka, kb) = (key(a), key(b));
                 ka.partial_cmp(&kb).unwrap_or(std::cmp::Ordering::Equal)
+            })
+    }
+
+    /// Open upper-section box (Ones–Sixes) whose number appears most often in the dice
+    /// (ties go to the higher number, since it's worth more).
+    fn best_number_category(&self) -> Option<Category> {
+        let dice = self.all_dice();
+        let p = &self.players[self.current];
+        CATEGORIES[..6]
+            .iter()
+            .copied()
+            .filter(|c| p.scores[c.index()].is_none())
+            .max_by_key(|c| {
+                let face = c.index() + 1;
+                (dice.iter().filter(|&&d| d as usize == face).count(), face)
             })
     }
 
@@ -570,8 +595,10 @@ impl Yahtzee {
             log_row = log_row.push(text("+100 Yahtzee bonus!").size(16).color(ACCENT));
         }
 
-        let auto_btn = button(
-            text("Auto-score best")
+        let can_auto = human && self.has_rolled();
+
+        let auto_number_btn = button(
+            text("Most dice")
                 .size(22)
                 .width(Length::Fill)
                 .align_x(alignment::Horizontal::Center),
@@ -579,7 +606,22 @@ impl Yahtzee {
         .width(Length::Fill)
         .padding([14, 24])
         .style(potential_style)
-        .on_press_maybe((human && self.has_rolled()).then_some(Message::AutoScore));
+        .on_press_maybe(
+            (can_auto && self.best_number_category().is_some()).then_some(Message::AutoNumber),
+        );
+
+        let auto_best_btn = button(
+            text("Highest score")
+                .size(22)
+                .width(Length::Fill)
+                .align_x(alignment::Horizontal::Center),
+        )
+        .width(Length::Fill)
+        .padding([14, 24])
+        .style(potential_style)
+        .on_press_maybe(can_auto.then_some(Message::AutoScore));
+
+        let auto_row = row![auto_number_btn, auto_best_btn].spacing(12);
 
         let new_game_btn = button(
             text("New game")
@@ -598,14 +640,14 @@ impl Yahtzee {
             rolled_row,
             kept_row,
             roll_btn,
-            auto_btn,
+            auto_row,
             new_game_btn,
         ]
         .spacing(18)
         .width(Length::Fill);
 
         let board = container(self.scoreboard())
-            .width(400)
+            .width(350)
             .padding(12)
             .style(|_theme: &Theme| container::Style {
                 border: Border {
@@ -746,7 +788,7 @@ fn divider<'a>() -> Element<'a, Message> {
 
 fn cell<'a>(content: Element<'a, Message>) -> Element<'a, Message> {
     container(content)
-        .width(72)
+        .width(64)
         .height(28)
         .align_x(alignment::Horizontal::Center)
         .align_y(alignment::Vertical::Center)
