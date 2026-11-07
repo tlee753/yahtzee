@@ -1,8 +1,4 @@
-//! Yahtzee vs. AI, built with iced 0.14 (Rust edition 2024).
-//!
-//! Layout: game area on the left, scoreboard on the right.
-//! Dice live in two rows of 5 fixed slots (rolled on top, kept on the bottom).
-//! Each row is always sorted ascending, with empty slots on the right.
+#![windows_subsystem = "windows"]
 
 use iced::theme::Palette;
 use iced::widget::{Column, Row, button, column, container, row, text};
@@ -23,7 +19,6 @@ const ACCENT: Color = Color {
 fn main() -> iced::Result {
     iced::application(Yahtzee::default, Yahtzee::update, Yahtzee::view)
         .title("Yahtzee")
-        // iced can't load WOFF2 — convert it to TTF first (see README note)
         .font(include_bytes!("lexend.woff2").as_slice())
         .default_font(Font::with_name("Lexend"))
         .subscription(Yahtzee::subscription)

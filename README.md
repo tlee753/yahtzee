@@ -8,3 +8,8 @@ Just a little offline dice rolling in rust...
 
 ### Demo
 ![Demo](demo.png)
+
+### Windows Cross Compilation
+```bash
+cargo build --target x86_64-pc-windows-gnu --release
+```

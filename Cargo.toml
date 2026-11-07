@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# "tokio" feature is needed for iced::time::every (used to pace the AI's moves)
 iced = { version = "0.14", features = ["tokio"] }
 rand = "0.9"
 
 [profile.dev]
 opt-level = 2
+
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
